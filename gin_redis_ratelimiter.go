@@ -2,7 +2,7 @@ package ratelimiter
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // GinRedisRatelimiter 按配置信息生成 redis 限频中间件

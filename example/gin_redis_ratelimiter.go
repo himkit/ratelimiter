@@ -1,20 +1,20 @@
 package main
 
 import (
+	"context"
 	"time"
 
-	"github.com/axiaoxin-com/goutils"
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
 	r := gin.New()
 	// Put a token into the token bucket every 1s
 	// Maximum 1 request allowed per second
-	rdb, err := goutils.NewRedisClient(&redis.Options{})
-	if err != nil {
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		panic(err)
 	}
 	r.Use(ratelimiter.GinRedisRatelimiter(rdb, ratelimiter.GinRatelimiterConfig{

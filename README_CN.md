@@ -1,7 +1,7 @@
 # ratelimiter
 
-[![Build Status](https://travis-ci.org/axiaoxin-com/ratelimiter.svg?branch=master)](https://travis-ci.org/axiaoxin-com/ratelimiter)
-[![go report card](https://goreportcard.com/badge/github.com/axiaoxin-com/ratelimiter)](https://goreportcard.com/report/github.com/axiaoxin-com/ratelimiter)
+[![Build Status](https://github.com/himkit/ratelimiter/actions/workflows/go.yml/badge.svg)](https://github.com/himkit/ratelimiter/actions/workflows/go.yml)
+[![go report card](https://goreportcard.com/badge/github.com/himkit/ratelimiter)](https://goreportcard.com/report/github.com/himkit/ratelimiter)
 
 token bucket 请求限频的简单版实现，支持进程内存和 redis 分布式限频（以及 gin 中间件）
 
@@ -14,7 +14,7 @@ token bucket 请求限频的简单版实现，支持进程内存和 redis 分布
 ## go pkg 安装
 
 ```
-go get -u github.com/axiaoxin-com/ratelimiter
+go get -u github.com/himkit/ratelimiter
 ```
 
 ## Gin Middleware 用法
@@ -27,7 +27,7 @@ package main
 import (
 	"time"
 
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,7 +67,7 @@ import (
 	"time"
 
 	"github.com/axiaoxin-com/goutils"
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 )
@@ -115,7 +115,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 )
 
 func main() {
@@ -145,7 +145,7 @@ import (
 	"time"
 
 	"github.com/axiaoxin-com/goutils"
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 	"github.com/go-redis/redis/v8"
 )
 

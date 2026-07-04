@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 )
 
 func main() {

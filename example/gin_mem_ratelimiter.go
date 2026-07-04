@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/axiaoxin-com/ratelimiter"
+	"github.com/himkit/ratelimiter"
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,10 +1,11 @@
 package ratelimiter
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/axiaoxin-com/goutils"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,14 +22,20 @@ func TestGinMemRatelimiter(t *testing.T) {
 		c.JSON(200, "hi")
 	})
 	time.Sleep(1 * time.Second)
-	recorder, err := goutils.RequestHTTPHandler(r, "GET", "/", nil, nil)
-	assert.Nil(t, err)
-	assert.Equal(t, recorder.Code, 200)
-	recorder, err = goutils.RequestHTTPHandler(r, "GET", "/", nil, nil)
-	assert.Nil(t, err)
-	assert.Equal(t, recorder.Code, 429)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 429, w.Code)
+
 	time.Sleep(1 * time.Second)
-	recorder, err = goutils.RequestHTTPHandler(r, "GET", "/", nil, nil)
-	assert.Nil(t, err)
-	assert.Equal(t, recorder.Code, 200)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
 }

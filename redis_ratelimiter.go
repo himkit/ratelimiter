@@ -4,9 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/axiaoxin-com/logging"
-	"github.com/go-redis/redis/v8"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -32,7 +30,7 @@ func NewRedisRatelimiter(rdb *redis.Client) *RedisRatelimiter {
 // Allow 判断给定 key 是否被允许
 func (r *RedisRatelimiter) Allow(ctx context.Context, key string, tokenFillInterval time.Duration, bucketSize int) bool {
 	// 参数小于等于 0 时直接限制
-	if tokenFillInterval.Seconds() <= 0 || bucketSize <= 0 {
+	if tokenFillInterval <= 0 || bucketSize <= 0 {
 		return false
 	}
 
@@ -46,21 +44,11 @@ func (r *RedisRatelimiter) Allow(ctx context.Context, key string, tokenFillInter
 	}
 	// 在 redis 中执行 lua 脚本计算当前 key 是否被限频
 	// Run 会自动使用 evalsha 优化带宽
-	v, err := r.script.Run(ctx, r.Client, keys, args...).Result()
+	limited, err := r.script.Run(ctx, r.Client, keys, args...).Int64()
 	if err != nil {
 		// 有 err 默认放行
-		logging.Error(ctx, "RedisRatelimiter run script error:"+err.Error())
+		zap.L().Error("RedisRatelimiter run script error", zap.Error(err))
 		return true
 	}
-	resultJSON, ok := v.(string)
-	if !ok {
-		logging.Error(ctx, "RedisRatelimiter assert script result error", zap.Any("result", v))
-		return true
-	}
-	isLimited := jsoniter.Get([]byte(resultJSON), "is_limited").ToBool()
-	// logging.Debug(ctx, "redis eval return json", zap.String("result", resultJSON))
-	if isLimited {
-		return false
-	}
-	return true
+	return limited == 0
 }

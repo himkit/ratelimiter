@@ -2,61 +2,130 @@ package ratelimiter
 
 import (
 	"context"
+	"hash/fnv"
+	"sync"
 	"time"
 
-	"github.com/axiaoxin-com/logging"
-	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 )
 
-// MemRatelimiter  进程内存 limiter
-type MemRatelimiter struct {
-	*rate.Limiter
-	*cache.Cache
-	Expire time.Duration
-}
+const (
+	// memShardCount is the number of shards for the in-memory limiter.
+	// It should be a power of two so the shard index can be computed with a bitmask.
+	memShardCount = 256
+	memShardMask  = memShardCount - 1
+)
 
 var (
-	// MemRatelimiterCacheExpiration MemRatelimiter key 的过期时间
+	// MemRatelimiterCacheExpiration is the TTL for each cached limiter entry.
 	MemRatelimiterCacheExpiration = time.Minute * 60
-	// MemRatelimiterCacheCleanInterval MemRatelimiter 过期 key 的清理时间间隔
+	// MemRatelimiterCacheCleanInterval is the interval between sweeps of expired entries.
 	MemRatelimiterCacheCleanInterval = time.Minute * 60
 )
 
-// NewMemRatelimiter 根据配置信息创建 mem limiter
+type limiterEntry struct {
+	limiter *rate.Limiter
+	expire  int64 // nanoseconds since Unix epoch
+}
+
+type memShard struct {
+	mu   sync.RWMutex
+	data map[string]*limiterEntry
+}
+
+// MemRatelimiter is a process-local token-bucket rate limiter.
+type MemRatelimiter struct {
+	shards        [memShardCount]*memShard
+	ttl           time.Duration
+	sweepInterval time.Duration
+	once          sync.Once
+	stop          chan struct{}
+}
+
+// NewMemRatelimiter creates a new process-local rate limiter.
 func NewMemRatelimiter() *MemRatelimiter {
-	// 创建 mem cache
-	memCache := cache.New(MemRatelimiterCacheExpiration, MemRatelimiterCacheCleanInterval)
-	return &MemRatelimiter{
-		Cache: memCache,
+	r := &MemRatelimiter{
+		ttl:           MemRatelimiterCacheExpiration,
+		sweepInterval: MemRatelimiterCacheCleanInterval,
+		stop:          make(chan struct{}),
+	}
+	for i := range memShardCount {
+		r.shards[i] = &memShard{data: make(map[string]*limiterEntry)}
+	}
+	return r
+}
+
+func (r *MemRatelimiter) startCleaner() {
+	r.once.Do(func() {
+		go r.cleanLoop()
+	})
+}
+
+func (r *MemRatelimiter) cleanLoop() {
+	ticker := time.NewTicker(r.sweepInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-r.stop:
+			return
+		case <-ticker.C:
+			r.sweep()
+		}
 	}
 }
 
-// Allow 使用 time/rate 的 token bucket 算法判断给定 key 和对应的限制速率下是否被允许
-// tokenFillInterval 每隔多长时间往桶中放一个 Token
-// bucketSize 代表 Token 桶的容量大小
+func (r *MemRatelimiter) sweep() {
+	now := time.Now().UnixNano()
+	for i := range memShardCount {
+		shard := r.shards[i]
+		shard.mu.Lock()
+		for key, entry := range shard.data {
+			if now > entry.expire {
+				delete(shard.data, key)
+			}
+		}
+		shard.mu.Unlock()
+	}
+}
+
+// Stop halts the background cleaner goroutine.
+func (r *MemRatelimiter) Stop() {
+	close(r.stop)
+}
+
+func shardIndex(key string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(key))
+	return h.Sum32() & memShardMask
+}
+
+// Allow reports whether the request for the given key is allowed under the
+// token-bucket configuration. It returns false when tokenFillInterval or
+// bucketSize are non-positive.
 func (r *MemRatelimiter) Allow(ctx context.Context, key string, tokenFillInterval time.Duration, bucketSize int) bool {
-	// 参数小于等于 0 时直接限制
-	if tokenFillInterval.Seconds() <= 0 || bucketSize <= 0 {
+	if tokenFillInterval <= 0 || bucketSize <= 0 {
 		return false
 	}
 
+	r.startCleaner()
+
 	tokenRate := rate.Every(tokenFillInterval)
-	limiterI, exists := r.Cache.Get(key)
-	if !exists {
+	idx := shardIndex(key)
+	shard := r.shards[idx]
+	now := time.Now()
+	expire := now.Add(r.ttl).UnixNano()
+
+	shard.mu.Lock()
+	defer shard.mu.Unlock()
+
+	entry, exists := shard.data[key]
+	if !exists || now.UnixNano() > entry.expire {
 		limiter := rate.NewLimiter(tokenRate, bucketSize)
 		limiter.Allow()
-		r.Cache.Set(key, limiter, MemRatelimiterCacheExpiration)
+		shard.data[key] = &limiterEntry{limiter: limiter, expire: expire}
 		return true
 	}
 
-	if limiter, ok := limiterI.(*rate.Limiter); ok {
-		isAllow := limiter.Allow()
-		r.Cache.Set(key, limiter, MemRatelimiterCacheExpiration)
-		return isAllow
-	}
-
-	logging.Error(nil, "MemRatelimiter assert limiter error")
-	return true
-
+	// Existing limiter is still valid; just try to consume a token.
+	return entry.limiter.Allow()
 }
