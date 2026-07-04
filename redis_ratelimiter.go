@@ -9,17 +9,17 @@ import (
 )
 
 var (
-	// RedisRatelimiterCacheExpiration redis ratelimiter 缓存过期时间
+	// RedisRatelimiterCacheExpiration is the default TTL for Redis rate limiter keys.
 	RedisRatelimiterCacheExpiration = time.Minute * 60
 )
 
-// RedisRatelimiter redis limiter
+// RedisRatelimiter is a distributed token-bucket rate limiter backed by Redis.
 type RedisRatelimiter struct {
 	*redis.Client
 	script *redis.Script
 }
 
-// NewRedisRatelimiter 根据配置创建 redis limiter
+// NewRedisRatelimiter creates a Redis-backed rate limiter using the provided client.
 func NewRedisRatelimiter(rdb *redis.Client) *RedisRatelimiter {
 	return &RedisRatelimiter{
 		Client: rdb,
@@ -27,26 +27,26 @@ func NewRedisRatelimiter(rdb *redis.Client) *RedisRatelimiter {
 	}
 }
 
-// Allow 判断给定 key 是否被允许
+// Allow reports whether the request identified by key is permitted under the token bucket.
 func (r *RedisRatelimiter) Allow(ctx context.Context, key string, tokenFillInterval time.Duration, bucketSize int) bool {
-	// 参数小于等于 0 时直接限制
+	// Reject immediately when the bucket parameters are invalid.
 	if tokenFillInterval <= 0 || bucketSize <= 0 {
 		return false
 	}
 
-	// 构造 lua 脚本参数
+	// Build the Lua script arguments.
 	keys := []string{key}
 	args := []interface{}{
 		bucketSize,
-		1, // lua 脚本支持调整每次放入 token 的个数，这里全部统一使用每次放一个 token
+		1, // The script supports variable refill counts; the Go wrapper refills one token at a time.
 		tokenFillInterval.Microseconds(),
 		RedisRatelimiterCacheExpiration.Seconds(),
 	}
-	// 在 redis 中执行 lua 脚本计算当前 key 是否被限频
-	// Run 会自动使用 evalsha 优化带宽
+	// Run the Lua script on Redis to decide if the key is limited.
+	// go-redis.Script.Run uses EVALSHA automatically to save bandwidth.
 	limited, err := r.script.Run(ctx, r.Client, keys, args...).Int64()
 	if err != nil {
-		// 有 err 默认放行
+		// Fail open on Redis errors.
 		zap.L().Error("RedisRatelimiter run script error", zap.Error(err))
 		return true
 	}

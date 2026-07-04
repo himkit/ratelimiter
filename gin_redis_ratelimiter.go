@@ -5,14 +5,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// GinRedisRatelimiter 按配置信息生成 redis 限频中间件
+// GinRedisRatelimiter returns a Gin middleware that limits requests using Redis.
 func GinRedisRatelimiter(rdb *redis.Client, conf GinRatelimiterConfig) gin.HandlerFunc {
 	if conf.TokenBucketConfig == nil {
 		panic("GinRatelimiterConfig must implement the TokenBucketConfig callback function")
 	}
 	limiter := NewRedisRatelimiter(rdb)
 	return func(c *gin.Context) {
-		// 获取 limit key
+		// Determine the limit key for this request.
 		limitKey := DefaultGinLimitKey(c)
 		if conf.LimitKey != nil {
 			limitKey = conf.LimitKey(c)
@@ -25,7 +25,7 @@ func GinRedisRatelimiter(rdb *redis.Client, conf GinRatelimiterConfig) gin.Handl
 
 		tokenFillInterval, bucketSize := conf.TokenBucketConfig(c)
 
-		// 在 redis 中执行 lua 脚本
+		// Apply the Redis rate limit.
 		if !limiter.Allow(c, limitKey, tokenFillInterval, bucketSize) {
 			limitedHandler(c)
 			return

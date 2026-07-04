@@ -246,7 +246,15 @@ This implementation calculates the number of tokens produced since the last requ
 
 ## Redis + Lua notes
 
-The Redis limiter executes a Lua script atomically with `EVAL`/`EVALSHA`. Because the script calls the non-deterministic `TIME` command, it starts with `redis.replicate_commands()` to satisfy Redis's replication requirements.
+The Redis limiter executes a Lua script atomically with `EVAL`/`EVALSHA`.
+
+Why Lua instead of separate Redis commands?
+
+- **Atomic read-update-write:** Redis runs Lua scripts sequentially and uninterrupted, so concurrent requests cannot race between reading the remaining tokens and writing the updated count.
+- **Consistent clock:** The script reads `TIME` on the Redis server, so all application instances share the same clock instead of relying on potentially skewed local clocks.
+- **Fewer roundtrips:** A single `EVALSHA` call replaces multiple commands (`EXISTS`, `TIME`, `HGET`, `HSET`, `EXPIRE`).
+
+Because the script calls the non-deterministic `TIME` command, it starts with `redis.replicate_commands()` to satisfy Redis replication requirements.
 
 ## License
 
