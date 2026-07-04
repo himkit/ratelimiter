@@ -8,22 +8,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DefaultGinLimitKey 使用客户端 IP 生成默认的限频 key
+// DefaultGinLimitKey returns the default rate-limit key using the client IP and request path.
 func DefaultGinLimitKey(c *gin.Context) string {
 	return fmt.Sprintf("pink-lady:ratelimiter:%s:%s", c.ClientIP(), c.FullPath())
 }
 
-// DefaultGinLimitedHandler 限频触发返回 429
+// DefaultGinLimitedHandler aborts the request with 429 Too Many Requests.
 func DefaultGinLimitedHandler(c *gin.Context) {
 	c.AbortWithStatus(http.StatusTooManyRequests)
 }
 
-// GinRatelimiterConfig Gin Ratelimiter 中间件的配置信息
+// GinRatelimiterConfig configures the Gin rate-limiting middleware.
 type GinRatelimiterConfig struct {
-	// LimitKey 生成限频 key 的函数，不传使用默认的对 IP 维度进行限制
+	// LimitKey returns the rate-limit key for a request.
+	// Defaults to DefaultGinLimitKey when nil.
 	LimitKey func(*gin.Context) string
-	// LimitedHandler 触发限频时的 handler
+	// LimitedHandler runs when the request is rate-limited.
+	// Defaults to DefaultGinLimitedHandler when nil.
 	LimitedHandler func(*gin.Context)
-	// TokenBucketConfig 获取 token bucket 每次放入一个token的时间间隔和桶大小配置
+	// TokenBucketConfig returns the token refill interval and bucket size for a request.
 	TokenBucketConfig func(*gin.Context) (time.Duration, int)
 }

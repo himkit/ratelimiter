@@ -2,8 +2,9 @@
 
 [![Build Status](https://github.com/himkit/ratelimiter/actions/workflows/go.yml/badge.svg)](https://github.com/himkit/ratelimiter/actions/workflows/go.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/himkit/ratelimiter)](https://goreportcard.com/report/github.com/himkit/ratelimiter)
+[![Go Reference](https://pkg.go.dev/badge/github.com/himkit/ratelimiter.svg)](https://pkg.go.dev/github.com/himkit/ratelimiter)
 
-A token-bucket rate limiter for Go. This repository is a **fork and revamp** of the original [`github.com/axiaoxin-com/ratelimiter`](https://github.com/axiaoxin-com/ratelimiter). The codebase has been modernized, hardened, and optimized while keeping the public API familiar.
+A token-bucket rate limiter for Go. See the [Go package documentation](https://pkg.go.dev/github.com/himkit/ratelimiter) for the API reference. This repository is a **fork and revamp** of the original [`github.com/axiaoxin-com/ratelimiter`](https://github.com/axiaoxin-com/ratelimiter). The codebase has been modernized, hardened, and optimized while keeping the public API familiar.
 
 ## What changed in this revamp
 
