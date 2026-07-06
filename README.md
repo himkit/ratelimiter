@@ -62,7 +62,6 @@ go mod tidy
 
 ## Components
 
-- [lua-ngx-ratelimiter](./lua-ngx-ratelimiter): an OpenResty/nginx + Lua + Redis token-bucket limiter (unchanged from upstream).
 - [MemRatelimiter](./mem_ratelimiter.go): process-local token-bucket limiter built on `golang.org/x/time/rate` + a sharded TTL map.
 - [RedisRatelimiter](./redis_ratelimiter.go): distributed token-bucket limiter backed by Redis + Lua.
 - [GinMemRatelimiter](./gin_mem_ratelimiter.go): Gin middleware wrapping `MemRatelimiter`.

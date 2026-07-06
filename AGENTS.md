@@ -18,7 +18,6 @@
 - `gin_mem_ratelimiter.go` / `gin_redis_ratelimiter.go` — Gin middleware wrappers.
 - `config_gin.go` — shared Gin config, default limit key prefix `pink-lady:ratelimiter:<ip>:<path>`, and default 429 handler.
 - `example/` — runnable `package main` examples. Run one file at a time, e.g. `go run example/mem_ratelimiter.go`.
-- `lua-ngx-ratelimiter/` — independent OpenResty/nginx + Lua + Redis limiter; see its README for local dev scripts.
 
 ## Dependencies
 - Removed from the library: `github.com/axiaoxin-com/logging`, `github.com/axiaoxin-com/goutils`, `github.com/patrickmn/go-cache`, `github.com/json-iterator/go`.
